@@ -1,61 +1,127 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sistema de Gerenciamento Financeiro com Importação de Arquivos
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+MVP de um Sistema de Gerenciamento Financeiro para importação e análise de dados a partir de arquivos CSV/Excel. Projeto desenvolvido como estudo e hobby utilizando Laravel, Filament e processamento assíncrono de dados.
 
-## About Laravel
+## Funcionalidades Implementadas
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Autenticação Completa**: Login, registro e recuperação de senha
+- **Painel Administrativo**: Interface moderna com Filament
+- **Processamento Assíncrono**: Configuração de filas para processamento de tarefas em background
+- **Configuração de Email**: Integração com Mailtrap para testes de email
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Tecnologias Utilizadas
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Laravel 12**: Framework PHP moderno
+- **Laravel Sail**: Ambiente de desenvolvimento Docker
+- **Filament 3**: Framework de administração
+- **PostgreSQL**: Banco de dados relacional
+- **Redis**: Cache e filas
+- **Mailtrap**: Serviço para testes de email
 
-## Learning Laravel
+## Requisitos
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- Docker
+- Docker Compose
+- Git
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Instalação
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 1. Clone o repositório
 
-## Laravel Sponsors
+```bash
+git clone https://github.com/RicardoBaltazar/Sistema-de-Gerenciamento-Financeiro-com-Importa-o-de-Arquivos.git sgf
+cd sgf
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### 2. Configure o ambiente
 
-### Premium Partners
+Copie o arquivo de ambiente de exemplo:
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development/)**
-- **[Active Logic](https://activelogic.com)**
+```bash
+cp .env.example .env
+```
 
-## Contributing
+### 3. Inicie o Laravel Sail
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```bash
+docker run --rm \
+    -u "$(id -u):$(id -g)" \
+    -v "$(pwd):/var/www/html" \
+    -w /var/www/html \
+    laravelsail/php82-composer:latest \
+    composer install --ignore-platform-reqs
+```
 
-## Code of Conduct
+### 4. Inicie os containers
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+./vendor/bin/sail up -d
+```
 
-## Security Vulnerabilities
+### 5. Gere a chave da aplicação
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+```bash
+./vendor/bin/sail artisan key:generate
+```
 
-## License
+### 6. Execute as migrações
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+./vendor/bin/sail artisan migrate
+```
+
+### 7. Publique os assets do Filament
+
+```bash
+./vendor/bin/sail artisan filament:assets
+```
+
+### 8. Inicie o worker de filas
+
+```bash
+./vendor/bin/sail artisan queue:work
+```
+
+## Acessando o Sistema
+
+- **Aplicação**: [http://localhost](http://localhost)
+- **Painel Administrativo**: [http://localhost/admin](http://localhost/admin)
+
+## Configuração de Email (Desenvolvimento)
+
+O sistema está configurado para usar o Mailtrap para testes de email. Para configurar:
+
+1. Crie uma conta no [Mailtrap](https://mailtrap.io/)
+2. Obtenha suas credenciais SMTP
+3. Atualize as variáveis MAIL_* no arquivo .env
+
+## Executando Testes
+
+```bash
+./vendor/bin/sail artisan test
+```
+
+## Comandos Úteis
+
+- **Iniciar os containers**: `./vendor/bin/sail up -d`
+- **Parar os containers**: `./vendor/bin/sail down`
+- **Executar comandos Artisan**: `./vendor/bin/sail artisan [comando]`
+- **Executar Composer**: `./vendor/bin/sail composer [comando]`
+- **Executar NPM**: `./vendor/bin/sail npm [comando]`
+- **Acessar o shell**: `./vendor/bin/sail shell`
+- **Acessar o banco de dados**: `./vendor/bin/sail pgsql`
+
+## Próximos Passos
+
+- Implementação do módulo de importação de arquivos CSV/Excel
+- Desenvolvimento de dashboard para visualização de dados
+- Criação de relatórios financeiros
+- Implementação de permissões de usuário
+
+## Contribuição
+
+Este é um projeto de estudo e hobby. Contribuições são bem-vindas!
+
+## Licença
+
+Este projeto está licenciado sob a [MIT License](LICENSE).
