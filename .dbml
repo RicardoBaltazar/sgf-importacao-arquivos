@@ -1,0 +1,20 @@
+Table users {
+  id integer [pk, increment]
+  name varchar
+  email varchar [unique]
+  password varchar
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table transactions {
+  id integer [pk, increment]
+  user_id integer [ref: > users.id]
+  transaction_date date
+  description varchar
+  category varchar
+  amount decimal(10,2)
+  transaction_type varchar
+  created_at timestamp
+  updated_at timestamp
+}
