@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessTransactionsJob;
 use App\Services\FileProcessorService;
 use App\Services\FileValidationService;
-use App\Services\TransactionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -13,16 +13,13 @@ class TransactionController extends Controller
 {
     protected $fileProcessor;
     protected $fileValidator;
-    protected $transactionService;
 
     public function __construct(
         FileProcessorService $fileProcessor,
-        FileValidationService $fileValidator,
-        TransactionService $transactionService
+        FileValidationService $fileValidator
     ) {
         $this->fileProcessor = $fileProcessor;
         $this->fileValidator = $fileValidator;
-        $this->transactionService = $transactionService;
     }
 
     public function process(Request $request)
@@ -59,11 +56,12 @@ class TransactionController extends Controller
                 ]);
             }
 
-            $this->transactionService->storeTransactions($dados);
+            $userId = Auth::id();
+            ProcessTransactionsJob::dispatch($dados, $userId);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Transações importadas com sucesso',
+                'message' => 'Suas transações estão sendo processadas',
                 'count' => count($dados)
             ]);
         } catch (\Exception $e) {

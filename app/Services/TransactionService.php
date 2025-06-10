@@ -5,21 +5,26 @@ namespace App\Services;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class TransactionService
 {
     /**
      * Armazena as transações financeiras no banco de dados
      */
-    public function storeTransactions(array $transactions): array
+    public function storeTransactions(array $transactions, ?int $userId = null): array
     {
         $results = [];
-        $userId = Auth::id();
+        $userId = $userId ?: Auth::id();
 
-        foreach ($transactions as $transaction) {
+        Log::info("Iniciando armazenamento de " . count($transactions) . " transações");
+
+        foreach ($transactions as $index => $transaction) {
+            Log::debug("Processando transação {$index}");
             $results[] = $this->createTransaction($transaction, $userId);
         }
 
+        Log::info("Armazenamento concluído com sucesso");
         return $results;
     }
 
@@ -28,8 +33,7 @@ class TransactionService
      */
     private function createTransaction(array $data, int $userId): Transaction
     {
-        $transactionDate = $this->convertExcelDate($data['data_transacao']);
-
+        $transactionDate = $this->parseDate($data['data_transacao']);
         $transactionType = $data['tipo_transacao'] === 'despesa' ? 'expense' : 'income';
 
         return Transaction::create([
@@ -43,11 +47,23 @@ class TransactionService
     }
 
     /**
-     * Converte data no formato Excel para Carbon
+     * Converte a data para o formato correto
      */
-    private function convertExcelDate($excelDate): Carbon
+    private function parseDate($dateValue): Carbon
     {
-        // O Excel conta dias a partir de 1/1/1900
-        return Carbon::createFromTimestamp(($excelDate - 25569) * 86400);
+        if (is_string($dateValue) && preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $dateValue)) {
+            return Carbon::createFromFormat('d/m/Y', $dateValue);
+        }
+
+        if (is_numeric($dateValue)) {
+            return Carbon::createFromTimestamp(($dateValue - 25569) * 86400);
+        }
+
+        try {
+            return Carbon::parse($dateValue);
+        } catch (\Exception $e) {
+            Log::error("Erro ao converter data: {$dateValue}");
+            return Carbon::now();
+        }
     }
 }
