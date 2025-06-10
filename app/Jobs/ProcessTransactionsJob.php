@@ -2,6 +2,8 @@
 
 namespace App\Jobs;
 
+use App\Mail\TransactionsProcessedMail;
+use App\Models\User;
 use App\Services\TransactionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -9,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class ProcessTransactionsJob implements ShouldQueue
 {
@@ -35,11 +38,16 @@ class ProcessTransactionsJob implements ShouldQueue
 
         try {
             $results = $transactionService->storeTransactions($this->transactions, $this->userId);
-            Log::info('Processamento concluído com sucesso. ' . count($results) . ' transações armazenadas.');
+            $count = count($results);
+            Log::info('Processamento concluído com sucesso. ' . $count . ' transações armazenadas.');
 
-            // Aqui seria o local para adicionar o envio de e-mail
-            // Mail::to($user)->send(new TransactionsProcessedMail($results));
-
+            $user = User::find($this->userId);
+            if ($user) {
+                Mail::to($user->email)->send(new TransactionsProcessedMail($count));
+                Log::info('E-mail de notificação enviado para ' . $user->email);
+            } else {
+                Log::warning('Usuário não encontrado para envio de e-mail: ' . $this->userId);
+            }
         } catch (\Exception $e) {
             Log::error('Erro ao processar transações: ' . $e->getMessage());
             throw $e;
