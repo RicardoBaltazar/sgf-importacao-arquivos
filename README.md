@@ -1,13 +1,20 @@
 # Sistema de Gerenciamento Financeiro com Importação de Arquivos
 
-MVP de um Sistema de Gerenciamento Financeiro para importação e análise de dados a partir de arquivos CSV/Excel. Projeto desenvolvido como estudo e hobby utilizando Laravel, Filament e processamento assíncrono de dados.
+Sistema MVP para gerenciamento de dados financeiros que permite a importação e processamento de arquivos CSV e Excel. O projeto visa desenvolver uma plataforma que suporte o processamento de grandes volumes de dados, com capacidade para arquivos de até 1 milhão de linhas.
+
+O sistema foi projetado para processar dados de forma assíncrona, garantindo eficiência mesmo com arquivos grandes. Futuramente, serão implementadas funcionalidades para consultas aos dados importados, geração de relatórios e visualizações através de dashboards.
+
+Este é um projeto em desenvolvimento, criado como estudo e hobby, utilizando Laravel, Filament e técnicas de processamento assíncrono.
 
 ## Funcionalidades Implementadas
 
 - **Autenticação Completa**: Login, registro e recuperação de senha
 - **Painel Administrativo**: Interface moderna com Filament
-- **Processamento Assíncrono**: Configuração de filas para processamento de tarefas em background
-- **Configuração de Email**: Integração com Mailtrap para testes de email
+- **Importação de Arquivos Financeiros**: Suporte para arquivos CSV e Excel com dados financeiros
+- **Validação de Dados**: Verificação dos campos obrigatórios (data, descrição, categoria, valor, tipo)
+- **Processamento Assíncrono**: Processamento de arquivos em background usando filas
+- **Notificações por Email**: Envio automático de confirmação quando a importação é concluída
+- **Armazenamento Seguro**: Dados financeiros vinculados ao usuário autenticado
 
 ## Tecnologias Utilizadas
 
@@ -29,7 +36,7 @@ MVP de um Sistema de Gerenciamento Financeiro para importação e análise de da
 ### 1. Clone o repositório
 
 ```bash
-git clone https://github.com/RicardoBaltazar/Sistema-de-Gerenciamento-Financeiro-com-Importa-o-de-Arquivos.git sgf
+git clone https://github.com/RicardoBaltazar/sgf-importacao-arquivos.git sgf
 cd sgf
 ```
 
@@ -100,23 +107,6 @@ O sistema está configurado para usar o Mailtrap para testes de email. Para conf
 ```bash
 ./vendor/bin/sail artisan test
 ```
-
-## Comandos Úteis
-
-- **Iniciar os containers**: `./vendor/bin/sail up -d`
-- **Parar os containers**: `./vendor/bin/sail down`
-- **Executar comandos Artisan**: `./vendor/bin/sail artisan [comando]`
-- **Executar Composer**: `./vendor/bin/sail composer [comando]`
-- **Executar NPM**: `./vendor/bin/sail npm [comando]`
-- **Acessar o shell**: `./vendor/bin/sail shell`
-- **Acessar o banco de dados**: `./vendor/bin/sail pgsql`
-
-## Próximos Passos
-
-- Implementação do módulo de importação de arquivos CSV/Excel
-- Desenvolvimento de dashboard para visualização de dados
-- Criação de relatórios financeiros
-- Implementação de permissões de usuário
 
 ## Contribuição
 
