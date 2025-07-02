@@ -20,18 +20,12 @@ class ProcessTransactionsJob implements ShouldQueue
     protected $transactions;
     protected $userId;
 
-    /**
-     * Create a new job instance.
-     */
     public function __construct(array $transactions, int $userId)
     {
         $this->transactions = $transactions;
         $this->userId = $userId;
     }
 
-    /**
-     * Execute the job.
-     */
     public function handle(TransactionService $transactionService): void
     {
         Log::info('Iniciando processamento de ' . count($this->transactions) . ' transações para o usuário ' . $this->userId);

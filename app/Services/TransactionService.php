@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\ProcessFinancialStatisticJob;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +26,10 @@ class TransactionService
         }
 
         Log::info("Armazenamento concluído com sucesso");
+
+        ProcessFinancialStatisticJob::dispatch($userId);
+        Log::info("Job de geração de estatísticas financeiras agendado para o usuário: {$userId}");
+        
         return $results;
     }
 
