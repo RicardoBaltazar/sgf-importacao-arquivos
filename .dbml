@@ -18,3 +18,16 @@ Table transactions {
   created_at timestamp
   updated_at timestamp
 }
+
+Table financial_statistics {
+  id integer [pk, increment]
+  user_id integer [ref: > users.id]
+  year integer
+  month integer
+  category varchar
+  transaction_type varchar
+  total_amount decimal(15,2)
+  transaction_count integer
+  created_at timestamp
+  updated_at timestamp
+}
