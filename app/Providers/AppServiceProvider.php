@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\FinancialStatistic;
+use App\Observers\FinancialStatisticObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
@@ -31,5 +33,7 @@ class AppServiceProvider extends ServiceProvider
                 Session::migrate(true);
             }
         });
+
+        FinancialStatistic::observe(FinancialStatisticObserver::class);
     }
 }
