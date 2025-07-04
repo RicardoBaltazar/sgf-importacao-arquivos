@@ -15,6 +15,8 @@ Este é um projeto em desenvolvimento, criado como estudo e hobby, utilizando La
 - **Processamento Assíncrono**: Processamento de arquivos em background usando filas
 - **Notificações por Email**: Envio automático de confirmação quando a importação é concluída
 - **Armazenamento Seguro**: Dados financeiros vinculados ao usuário autenticado
+- **Relatórios Financeiros**: Visualização de estatísticas financeiras por usuário com filtros por ano, mês, categoria e tipo
+- **Formatação Brasileira**: Valores monetários formatados em Real (R$ 1.000,00)
 
 ## Tecnologias Utilizadas
 
@@ -88,6 +90,7 @@ docker run --rm \
 ```bash
 ./vendor/bin/sail artisan queue:work
 ```
+Nota: Mantenha este comando rodando em um terminal separado. Ele é responsável por processar as importações de arquivos e gerar as estatísticas financeiras em background.
 
 ## Acessando o Sistema
 
