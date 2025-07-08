@@ -15,7 +15,10 @@ Este é um projeto em desenvolvimento, criado como estudo e hobby, utilizando La
 - **Processamento Assíncrono**: Processamento de arquivos em background usando filas
 - **Notificações por Email**: Envio automático de confirmação quando a importação é concluída
 - **Armazenamento Seguro**: Dados financeiros vinculados ao usuário autenticado
+- **Listagem de Transações**: Visualização paginada de todas as transações do usuário com busca e ordenação
+- **Remoção de Transações**: Exclusão individual ou em lote de transações com atualização automática dos relatórios
 - **Relatórios Financeiros**: Visualização de estatísticas financeiras por usuário com filtros por ano, mês, categoria e tipo
+- **Monitoramento de Filas**: Dashboard do Laravel Horizon para acompanhar processamento de tarefas
 - **Formatação Brasileira**: Valores monetários formatados em Real (R$ 1.000,00)
 
 ## Tecnologias Utilizadas
@@ -85,17 +88,31 @@ docker run --rm \
 ./vendor/bin/sail artisan filament:assets
 ```
 
-### 8. Inicie o worker de filas
+### 8. Inicie o processamento de filas
+
+#### Opção 1: Laravel Horizon (Recomendado)
+```bash
+./vendor/bin/sail artisan horizon
+```
+#### Opção 2: Worker Tradicional
 
 ```bash
 ./vendor/bin/sail artisan queue:work
 ```
-Nota: Mantenha este comando rodando em um terminal separado. Ele é responsável por processar as importações de arquivos e gerar as estatísticas financeiras em background.
+Nota: Mantenha um destes comandos rodando em um terminal separado. Eles são responsáveis por processar as importações de arquivos e gerar as estatísticas financeiras em background.
+
+Diferenças:
+
+Horizon: Oferece dashboard visual, métricas em tempo real e melhor gerenciamento
+
+Queue:work: Opção mais simples, sem interface gráfica
 
 ## Acessando o Sistema
 
 - **Aplicação**: [http://localhost](http://localhost)
 - **Painel Administrativo**: [http://localhost/admin](http://localhost/admin)
+- **Dashboard Horizon**: [http://localhost/horizon](http://localhost/horizon)
+
 
 ## Configuração de Email (Desenvolvimento)
 
