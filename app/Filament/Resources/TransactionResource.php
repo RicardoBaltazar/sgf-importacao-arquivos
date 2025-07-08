@@ -3,6 +3,7 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\TransactionResource\Pages;
+use App\Jobs\ProcessFinancialStatisticJob;
 use App\Models\Transaction;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -48,7 +49,13 @@ class TransactionResource extends Resource
                     ->formatStateUsing(fn($state) => 'R$ ' . number_format($state, 2, ',', '.'))
                     ->sortable(),
             ])
-            ->actions([])
+            ->actions([
+                Tables\Actions\DeleteAction::make()
+                    ->after(function () {
+                        ProcessFinancialStatisticJob::dispatch(Auth::id())
+                            ->delay(now()->addSeconds(60));
+                    }),
+            ])
             ->bulkActions([])
             ->defaultSort('transaction_date', 'desc')
             ->modifyQueryUsing(function (Builder $query) {

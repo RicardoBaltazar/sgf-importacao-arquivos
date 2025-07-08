@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class ProcessFinancialStatisticJob implements ShouldQueue
@@ -27,9 +28,22 @@ class ProcessFinancialStatisticJob implements ShouldQueue
 
     public function handle(): void
     {
-        Log::info("Iniciando processamento de estatísticas financeiras para usuário: {$this->userId}");
-        $this->processUserStatistics($this->userId);
-        Log::info("Processamento de estatísticas concluído para usuário: {$this->userId}");
+        $cacheKey = "financial_stats_processing_{$this->userId}";
+
+        if (Cache::has($cacheKey)) {
+            Log::info("Job de estatísticas já agendado para usuário {$this->userId}, cancelando duplicata");
+            return;
+        }
+
+        Cache::put($cacheKey, true, 300);
+
+        try {
+            Log::info("Iniciando processamento de estatísticas financeiras para usuário: {$this->userId}");
+            $this->processUserStatistics($this->userId);
+            Log::info("Processamento de estatísticas concluído para usuário: {$this->userId}");
+        } finally {
+            Cache::forget($cacheKey);
+        }
     }
 
     private function processUserStatistics(int $userId): void
