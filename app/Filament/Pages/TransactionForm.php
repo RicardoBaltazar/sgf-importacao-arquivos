@@ -11,11 +11,15 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Support\Enums\ActionSize;
 use Filament\Actions\Action;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
+use Filament\Notifications\Notification;
 use Illuminate\Support\Facades\Route;
 
-class TransactionForm extends Page implements HasForms
+class TransactionForm extends Page implements HasForms, HasActions
 {
     use InteractsWithForms;
+    use InteractsWithActions;
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationLabel = 'Enviar Transações';
@@ -90,14 +94,16 @@ class TransactionForm extends Page implements HasForms
         $this->isShowingRequiredFields = !$this->isShowingRequiredFields;
     }
 
-    public function enviar()
+    public function processarArquivo()
     {
         $data = $this->form->getState();
 
         if (empty($data['arquivo'])) {
-            $this->processedData = [
-                'error' => 'Nenhum arquivo foi enviado.'
-            ];
+            Notification::make()
+                ->title('Erro')
+                ->body('Nenhum arquivo foi enviado.')
+                ->danger()
+                ->send();
             return;
         }
 
@@ -107,19 +113,39 @@ class TransactionForm extends Page implements HasForms
         $request = new \Illuminate\Http\Request(['arquivo' => $arquivoPath]);
 
         $response = $controller->process($request);
+        $result = json_decode($response->getContent(), true);
 
-        $this->processedData = json_decode($response->getContent(), true);
+        if (isset($result['error'])) {
+            Notification::make()
+                ->title('Erro na validação')
+                ->body($result['error'])
+                ->danger()
+                ->send();
+        } else {
+            Notification::make()
+                ->title('Arquivo enviado com sucesso!')
+                ->body("Suas {$result['count']} transações estão sendo processadas em segundo plano.")
+                ->success()
+                ->send();
+        }
+
+        $this->processedData = $result;
     }
 
-    protected function getFormActions(): array
+    public function enviarAction(): Action
     {
-        return [
-            Action::make('submit')
-                ->label('Processar Arquivo')
-                ->action(fn() => $this->enviar())
-                ->submit('form')
-                ->extraAttributes(['class' => 'mt-2'])
-        ];
+        return Action::make('enviar')
+            ->label('Enviar Arquivo')
+            ->requiresConfirmation()
+            ->modalHeading('Confirmar envio do arquivo')
+            ->modalDescription('Tem certeza que deseja processar este arquivo? As transações serão importadas para sua conta.')
+            ->modalSubmitActionLabel('Sim')
+            ->modalCancelActionLabel('Cancelar')
+            ->action(function () {
+                $this->form->validate();
+                $this->processarArquivo();
+            })
+            ->color('primary');
     }
 
     protected function getHeaderActions(): array
