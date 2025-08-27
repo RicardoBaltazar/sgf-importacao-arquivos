@@ -54,6 +54,7 @@ class TransactionForm extends Page implements HasForms, HasActions
                             ->helperText('Envie um arquivo CSV, Excel ou XML com suas transações')
                             ->required(),
 
+
                         Placeholder::make('campos_obrigatorios')
                             ->label('Campos Obrigatórios')
                             ->content('O arquivo deve conter os seguintes campos:')
@@ -124,7 +125,7 @@ class TransactionForm extends Page implements HasForms, HasActions
         } else {
             Notification::make()
                 ->title('Arquivo enviado com sucesso!')
-                ->body("Suas {$result['count']} transações estão sendo processadas em segundo plano.")
+                ->body("Suas transações estão sendo processadas em segundo plano. O processamento pode levar alguns minutos, mas você receberá uma notificação quando a validação do arquivo for finalizada e o processamento das transações for executado.")
                 ->success()
                 ->send();
         }

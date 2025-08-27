@@ -23,7 +23,12 @@ class User extends Authenticatable implements FilamentUser
      */
     public function canAccessPanel(Panel $panel): bool
     {
-        return true; // Você pode adicionar lógica de permissão aqui posteriormente
+        return true;
+    }
+
+    public function getFilamentName(): string
+    {
+        return $this->name;
     }
 
     /**

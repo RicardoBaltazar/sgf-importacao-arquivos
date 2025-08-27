@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\LazyCollection;
 
 class FileValidationService
 {
@@ -15,28 +16,29 @@ class FileValidationService
     ];
 
     protected $allowedExtensions = ['csv', 'xlsx', 'xls'];
+    protected $maxRecords = 250000;
 
-    /**
-     * Valida o arquivo antes do processamento
-     */
     public function validate(string $filePath): array
     {
-        if (!Storage::disk('public')->exists($filePath)) {
-            return [
-                'success' => false,
-                'message' => 'Arquivo não encontrado: ' . basename($filePath)
-            ];
+        if (file_exists($filePath)) {
+            $fullPath = $filePath;
+        } else {
+            if (!Storage::disk('public')->exists($filePath)) {
+                return [
+                    'success' => false,
+                    'message' => 'Arquivo não encontrado: ' . basename($filePath)
+                ];
+            }
+            $fullPath = Storage::disk('public')->path($filePath);
         }
 
-        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+        $extension = pathinfo($fullPath, PATHINFO_EXTENSION);
         if (!in_array(strtolower($extension), $this->allowedExtensions)) {
             return [
                 'success' => false,
                 'message' => 'Formato de arquivo não suportado. Use CSV ou Excel.'
             ];
         }
-
-        $fullPath = Storage::disk('public')->path($filePath);
 
         if (filesize($fullPath) === 0) {
             return [
@@ -46,17 +48,17 @@ class FileValidationService
         }
 
         if (strtolower($extension) === 'csv') {
-            return $this->validateCSV($fullPath);
+            return $this->validateCSVLazy($fullPath);
         } else {
-            return $this->validateExcel($fullPath);
+            return $this->validateExcelLazy($fullPath);
         }
     }
 
-    /**
-     * Valida arquivo CSV
-     */
-    private function validateCSV(string $filePath): array
+    private function validateCSVLazy(string $filePath): array
     {
+        set_time_limit(600);
+        ini_set('memory_limit', '3G');
+
         if (($handle = fopen($filePath, "r")) === false) {
             return [
                 'success' => false,
@@ -64,12 +66,11 @@ class FileValidationService
             ];
         }
 
-        // Detectar o delimitador
         $firstLine = fgets($handle);
         rewind($handle);
 
         $delimiters = ["\t", ",", ";"];
-        $delimiter = ","; // Padrão
+        $delimiter = ",";
 
         foreach ($delimiters as $d) {
             if (substr_count($firstLine, $d) > 0) {
@@ -78,7 +79,6 @@ class FileValidationService
             }
         }
 
-        // Ler cabeçalhos com o delimitador detectado
         $headers = fgetcsv($handle, 1000, $delimiter);
         if (!$headers) {
             fclose($handle);
@@ -88,17 +88,11 @@ class FileValidationService
             ];
         }
 
-        // Debug
         \Illuminate\Support\Facades\Log::info('Delimitador detectado: ' . $delimiter);
         \Illuminate\Support\Facades\Log::info('Cabeçalhos encontrados:', $headers);
 
-        $normalizedHeaders = array_map(function ($header) {
-            return trim(strtolower($header));
-        }, $headers);
-
-        $normalizedRequired = array_map(function ($attr) {
-            return trim(strtolower($attr));
-        }, $this->requiredAttributes);
+        $normalizedHeaders = array_map(fn($h) => trim(strtolower($h)), $headers);
+        $normalizedRequired = array_map(fn($a) => trim(strtolower($a)), $this->requiredAttributes);
 
         $missingAttributes = [];
         foreach ($this->requiredAttributes as $index => $attr) {
@@ -115,10 +109,6 @@ class FileValidationService
             ];
         }
 
-        $hasRows = false;
-        $rowCount = 0;
-        $emptyColumns = [];
-
         $requiredIndices = [];
         foreach ($normalizedRequired as $index => $required) {
             $headerIndex = array_search($required, $normalizedHeaders);
@@ -127,11 +117,34 @@ class FileValidationService
             }
         }
 
-        while (($row = fgetcsv($handle, 1000, $delimiter)) !== false) {
+        fclose($handle);
+
+        $lazyCollection = LazyCollection::make(function () use ($filePath, $delimiter) {
+            $handle = fopen($filePath, 'r');
+            fgetcsv($handle, 1000, $delimiter);
+            
+            while (($row = fgetcsv($handle, 1000, $delimiter)) !== false) {
+                yield $row;
+            }
+            
+            fclose($handle);
+        });
+
+        $rowCount = 0;
+        $emptyColumns = [];
+        $hasRows = false;
+
+        foreach ($lazyCollection as $row) {
             $hasRows = true;
             $rowCount++;
 
-            // Debug da primeira linha
+            if ($rowCount > $this->maxRecords) {
+                return [
+                    'success' => false,
+                    'message' => "Arquivo excede o limite de {$this->maxRecords} registros. Encontrados: {$rowCount}"
+                ];
+            }
+
             if ($rowCount === 1) {
                 \Illuminate\Support\Facades\Log::info('Primeira linha de dados:', $row);
             }
@@ -145,9 +158,11 @@ class FileValidationService
                     $emptyColumns[$attr] = true;
                 }
             }
-        }
 
-        fclose($handle);
+            if ($rowCount % 1000 === 0) {
+                gc_collect_cycles();
+            }
+        }
 
         if (!$hasRows) {
             return [
@@ -169,14 +184,16 @@ class FileValidationService
         ];
     }
 
-
-    /**
-     * Valida arquivo Excel
-     */
-    private function validateExcel(string $filePath): array
+    private function validateExcelLazy(string $filePath): array
     {
+        set_time_limit(600);
+        ini_set('memory_limit', '3G');
+        
         try {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+            $reader->setReadDataOnly(true);
+            $reader->setReadEmptyCells(false);
+            
             $spreadsheet = $reader->load($filePath);
             $worksheet = $spreadsheet->getActiveSheet();
 
@@ -197,20 +214,36 @@ class FileValidationService
                 ];
             }
 
+            $lazyCollection = LazyCollection::make(function () use ($worksheet) {
+                $rowIterator = $worksheet->getRowIterator();
+                $rowIterator->next();
+                
+                while ($rowIterator->valid()) {
+                    $row = $rowIterator->current();
+                    $cellIterator = $row->getCellIterator();
+                    $cellIterator->setIterateOnlyExistingCells(false);
+
+                    $values = [];
+                    foreach ($cellIterator as $cell) {
+                        $values[] = $cell->getValue();
+                    }
+                    
+                    yield $values;
+                    $rowIterator->next();
+                }
+            });
+
             $rowCount = 0;
             $emptyColumns = [];
-            $rowIterator = $worksheet->getRowIterator();
-            $rowIterator->next();
 
-            while ($rowIterator->valid()) {
+            foreach ($lazyCollection as $values) {
                 $rowCount++;
-                $row = $rowIterator->current();
-                $cellIterator = $row->getCellIterator();
-                $cellIterator->setIterateOnlyExistingCells(false);
 
-                $values = [];
-                foreach ($cellIterator as $cell) {
-                    $values[] = $cell->getValue();
+                if ($rowCount > $this->maxRecords) {
+                    return [
+                        'success' => false,
+                        'message' => "Arquivo excede o limite de {$this->maxRecords} registros. Encontrados: {$rowCount}"
+                    ];
                 }
 
                 foreach ($headers as $index => $header) {
@@ -222,7 +255,9 @@ class FileValidationService
                     }
                 }
 
-                $rowIterator->next();
+                if ($rowCount % 1000 === 0) {
+                    gc_collect_cycles();
+                }
             }
 
             if ($rowCount === 0) {
@@ -251,9 +286,6 @@ class FileValidationService
         }
     }
 
-    /**
-     * Verifica atributos obrigatórios ausentes
-     */
     private function checkMissingAttributes(array $headers): array
     {
         $missingAttributes = [];

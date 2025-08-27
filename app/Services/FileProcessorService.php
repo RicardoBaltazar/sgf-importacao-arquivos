@@ -2,109 +2,77 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\LazyCollection;
 
 class FileProcessorService
 {
-    /**
-     * Processa o arquivo a partir de um caminho físico
-     */
-    public function processFileFromPath(string $physicalPath): array
+    public function processFileFromPath(string $filePath): LazyCollection
     {
-        if (!file_exists($physicalPath)) {
-            return ['error' => 'Arquivo não encontrado: ' . $physicalPath];
-        }
-
-        $extension = pathinfo($physicalPath, PATHINFO_EXTENSION);
-
+        $extension = pathinfo($filePath, PATHINFO_EXTENSION);
+        
         if (strtolower($extension) === 'csv') {
-            return $this->processCSV($physicalPath);
-        } elseif (in_array(strtolower($extension), ['xlsx', 'xls'])) {
-            return $this->processExcel($physicalPath);
-        } elseif (strtolower($extension) === 'xml') {
-            return $this->processXML($physicalPath);
+            return $this->processCSV($filePath);
+        } else {
+            return $this->processExcel($filePath);
         }
-
-        return ['error' => 'Formato de arquivo não suportado'];
     }
 
-    /**
-     * Processa arquivo CSV
-     */
-    private function processCSV(string $filePath): array
+    private function processCSV(string $filePath): LazyCollection
     {
-        $data = [];
-
-        try {
-            $content = file_get_contents($filePath);
-            $encoding = mb_detect_encoding($content, ['UTF-8', 'ISO-8859-1', 'Windows-1252'], true);
-
-            if ($encoding && $encoding !== 'UTF-8') {
-                $content = mb_convert_encoding($content, 'UTF-8', $encoding);
-                $tempFile = tempnam(sys_get_temp_dir(), 'csv_');
-                file_put_contents($tempFile, $content);
-                $filePath = $tempFile;
-            }
-
-            $firstLine = '';
-            if (($handle = fopen($filePath, "r")) !== false) {
-                $firstLine = fgets($handle);
-                rewind($handle);
-
-                $delimiters = ["\t", ",", ";"];
-                $delimiter = ",";
-
-                foreach ($delimiters as $d) {
-                    if (substr_count($firstLine, $d) > 0) {
-                        $delimiter = $d;
-                        break;
-                    }
-                }
-
-                $headers = fgetcsv($handle, 1000, $delimiter);
-
-                while (($row = fgetcsv($handle, 1000, $delimiter)) !== false) {
-                    $item = [];
-
-                    foreach ($headers as $index => $field) {
-                        if (isset($row[$index])) {
-                            $item[$field] = $row[$index];
-                        }
-                    }
-
-                    $data[] = $item;
-                }
-
-                fclose($handle);
-
-                if (isset($tempFile)) {
-                    @unlink($tempFile);
+        return LazyCollection::make(function () use ($filePath) {
+            $handle = fopen($filePath, 'r');
+            
+            $firstLine = fgets($handle);
+            rewind($handle);
+            
+            $delimiters = ["\t", ",", ";"];
+            $delimiter = ",";
+            
+            foreach ($delimiters as $d) {
+                if (substr_count($firstLine, $d) > 0) {
+                    $delimiter = $d;
+                    break;
                 }
             }
-        } catch (\Exception $e) {
-            return ['error' => 'Erro ao processar arquivo CSV: ' . $e->getMessage()];
-        }
-
-        return $data;
+            
+            $headers = fgetcsv($handle, 1000, $delimiter);
+            
+            while (($row = fgetcsv($handle, 1000, $delimiter)) !== false) {
+                $transaction = [];
+                foreach ($headers as $index => $header) {
+                    $transaction[$header] = isset($row[$index]) ? trim($row[$index]) : '';
+                }
+                yield $transaction;
+            }
+            
+            fclose($handle);
+        });
     }
 
-
-    /**
-     * Processa arquivo Excel
-     */
-    private function processExcel(string $filePath): array
+    private function processExcel(string $filePath): LazyCollection
     {
-        $data = [];
-
-        try {
+        return LazyCollection::make(function () use ($filePath) {
             $reader = new \PhpOffice\PhpSpreadsheet\Reader\Xlsx();
+            $reader->setReadDataOnly(true);
+            $reader->setReadEmptyCells(false);
+            
             $spreadsheet = $reader->load($filePath);
             $worksheet = $spreadsheet->getActiveSheet();
 
             $headers = [];
-            $firstRow = true;
+            $firstRow = $worksheet->getRowIterator()->current();
+            $cellIterator = $firstRow->getCellIterator();
+            $cellIterator->setIterateOnlyExistingCells(false);
 
-            foreach ($worksheet->getRowIterator() as $row) {
+            foreach ($cellIterator as $cell) {
+                $headers[] = $cell->getValue();
+            }
+
+            $rowIterator = $worksheet->getRowIterator();
+            $rowIterator->next();
+            
+            while ($rowIterator->valid()) {
+                $row = $rowIterator->current();
                 $cellIterator = $row->getCellIterator();
                 $cellIterator->setIterateOnlyExistingCells(false);
 
@@ -112,52 +80,15 @@ class FileProcessorService
                 foreach ($cellIterator as $cell) {
                     $values[] = $cell->getValue();
                 }
-
-                if ($firstRow) {
-                    $headers = $values;
-                    $firstRow = false;
-                } else {
-                    $item = [];
-                    foreach ($headers as $index => $field) {
-                        if (isset($values[$index])) {
-                            $item[$field] = $values[$index];
-                        }
-                    }
-                    $data[] = $item;
-                }
-            }
-        } catch (\Exception $e) {
-            return ['error' => 'Erro ao processar arquivo Excel: ' . $e->getMessage()];
-        }
-
-        return $data;
-    }
-
-    /**
-     * Processa arquivo XML
-     */
-    private function processXML(string $filePath): array
-    {
-        $data = [];
-
-        try {
-            $xml = simplexml_load_file($filePath);
-
-            // Assumindo que o XML tem uma estrutura com elementos repetidos
-            // Por exemplo: <transacoes><transacao>...</transacao><transacao>...</transacao></transacoes>
-            foreach ($xml->children() as $item) {
+                
                 $transaction = [];
-
-                foreach ($item as $key => $value) {
-                    $transaction[(string)$key] = (string)$value;
+                foreach ($headers as $index => $header) {
+                    $transaction[$header] = isset($values[$index]) ? trim($values[$index]) : '';
                 }
-
-                $data[] = $transaction;
+                
+                yield $transaction;
+                $rowIterator->next();
             }
-        } catch (\Exception $e) {
-            return ['error' => 'Erro ao processar arquivo XML: ' . $e->getMessage()];
-        }
-
-        return $data;
+        });
     }
 }

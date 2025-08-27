@@ -3,14 +3,13 @@
 namespace App\Jobs;
 
 use App\Models\FinancialStatistic;
-use App\Models\Transaction;
-use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ProcessFinancialStatisticJob implements ShouldQueue
@@ -18,7 +17,8 @@ class ProcessFinancialStatisticJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 3600;
-    public $tries = 3;
+    public $tries = 1;
+
     protected $userId;
 
     public function __construct(int $userId)
@@ -48,69 +48,63 @@ class ProcessFinancialStatisticJob implements ShouldQueue
 
     private function processUserStatistics(int $userId): void
     {
-        $query = Transaction::where('user_id', $userId)
-            ->orderBy('transaction_date');
-
+        set_time_limit(0);
+        ini_set('memory_limit', '1G');
+        
         Log::info('Processando estatísticas para o usuário: ' . $userId);
 
-        $stats = [];
+        FinancialStatistic::where('user_id', $userId)->delete();
 
-        foreach ($query->cursor() as $transaction) {
-            $transactionDate = $transaction->transaction_date;
-            if (!($transactionDate instanceof Carbon)) {
-                $transactionDate = Carbon::parse($transactionDate);
-            }
+        $query = DB::table('transactions')
+            ->select([
+                'user_id',
+                DB::raw('EXTRACT(YEAR FROM transaction_date) as year'),
+                DB::raw('EXTRACT(MONTH FROM transaction_date) as month'),
+                'category',
+                'transaction_type',
+                DB::raw('SUM(amount) as total_amount'),
+                DB::raw('COUNT(*) as transaction_count')
+            ])
+            ->where('user_id', $userId)
+            ->groupBy([
+                'user_id',
+                DB::raw('EXTRACT(YEAR FROM transaction_date)'),
+                DB::raw('EXTRACT(MONTH FROM transaction_date)'),
+                'category',
+                'transaction_type'
+            ]);
 
-            $year = (int) $transactionDate->format('Y');
-            $month = (int) $transactionDate->format('m');
-            $category = $transaction->category;
-            $type = $transaction->transaction_type;
+        $batchData = [];
+        $processedCount = 0;
 
-            $key = "{$year}_{$month}_{$category}_{$type}";
+        foreach ($query->cursor() as $stat) {
+            $batchData[] = [
+                'user_id' => $stat->user_id,
+                'year' => (int) $stat->year,
+                'month' => (int) $stat->month,
+                'category' => $stat->category,
+                'transaction_type' => $stat->transaction_type,
+                'total_amount' => $stat->total_amount,
+                'transaction_count' => $stat->transaction_count,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
 
-            if (!isset($stats[$key])) {
-                $stats[$key] = [
-                    'user_id' => $userId,
-                    'year' => $year,
-                    'month' => $month,
-                    'category' => $category,
-                    'transaction_type' => $type,
-                    'total_amount' => 0,
-                    'transaction_count' => 0,
-                ];
-            }
+            $processedCount++;
 
-            $stats[$key]['total_amount'] += $transaction->amount;
-            $stats[$key]['transaction_count']++;
-
-            if (count($stats) >= 1000) {
-                $this->upsertStatsBatch($stats);
-                $stats = [];
+            if (count($batchData) >= 1000) {
+                FinancialStatistic::insert($batchData);
+                $batchData = [];
+                
+                Log::info("Processadas {$processedCount} estatísticas");
+                gc_collect_cycles();
             }
         }
 
-        if (!empty($stats)) {
-            $this->upsertStatsBatch($stats);
+        if (!empty($batchData)) {
+            FinancialStatistic::insert($batchData);
         }
-    }
 
-    private function upsertStatsBatch(array $stats): void
-    {
-        foreach ($stats as $stat) {
-            FinancialStatistic::updateOrCreate(
-                [
-                    'user_id' => $stat['user_id'],
-                    'year' => $stat['year'],
-                    'month' => $stat['month'],
-                    'category' => $stat['category'],
-                    'transaction_type' => $stat['transaction_type'],
-                ],
-                [
-                    'total_amount' => $stat['total_amount'],
-                    'transaction_count' => $stat['transaction_count'],
-                ]
-            );
-        }
-        Log::info('Estatísticas atualizadas com sucesso');
+        Log::info("Estatísticas atualizadas com sucesso: {$processedCount} registros");
     }
 }

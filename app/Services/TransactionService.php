@@ -2,58 +2,35 @@
 
 namespace App\Services;
 
-use App\Jobs\ProcessFinancialStatisticJob;
 use App\Models\Transaction;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class TransactionService
 {
-    /**
-     * Armazena as transações financeiras no banco de dados
-     */
-    public function storeTransactions(array $transactions, ?int $userId = null): array
+    public function storeTransactionsChunk(array $transactions, int $userId): void
     {
-        $results = [];
-        $userId = $userId ?: Auth::id();
+        Log::info("Armazenando chunk de " . count($transactions) . " transações");
 
-        Log::info("Iniciando armazenamento de " . count($transactions) . " transações");
-
-        foreach ($transactions as $index => $transaction) {
-            Log::debug("Processando transação {$index}");
-            $results[] = $this->createTransaction($transaction, $userId);
+        $data = [];
+        foreach ($transactions as $transaction) {
+            $data[] = [
+                'user_id' => $userId,
+                'transaction_date' => $this->parseDate($transaction['data_transacao']),
+                'description' => $transaction['descricao'],
+                'category' => $transaction['categoria'],
+                'amount' => $transaction['valor'],
+                'transaction_type' => $transaction['tipo_transacao'] === 'despesa' ? 'expense' : 'income',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
         }
 
-        Log::info("Armazenamento concluído com sucesso");
-
-        ProcessFinancialStatisticJob::dispatch($userId);
-        Log::info("Job de geração de estatísticas financeiras agendado para o usuário: {$userId}");
-        
-        return $results;
+        DB::table('transactions')->insert($data);
+        Log::info("Chunk armazenado com sucesso");
     }
 
-    /**
-     * Cria uma nova transação no banco de dados
-     */
-    private function createTransaction(array $data, int $userId): Transaction
-    {
-        $transactionDate = $this->parseDate($data['data_transacao']);
-        $transactionType = $data['tipo_transacao'] === 'despesa' ? 'expense' : 'income';
-
-        return Transaction::create([
-            'user_id' => $userId,
-            'transaction_date' => $transactionDate,
-            'description' => $data['descricao'],
-            'category' => $data['categoria'],
-            'amount' => $data['valor'],
-            'transaction_type' => $transactionType,
-        ]);
-    }
-
-    /**
-     * Converte a data para o formato correto
-     */
     private function parseDate($dateValue): Carbon
     {
         if (is_string($dateValue) && preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $dateValue)) {
