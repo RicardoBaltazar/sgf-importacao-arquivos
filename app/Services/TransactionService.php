@@ -18,8 +18,8 @@ class TransactionService
             $data[] = [
                 'user_id' => $userId,
                 'transaction_date' => $this->parseDate($transaction['data_transacao']),
-                'description' => $transaction['descricao'],
-                'category' => $transaction['categoria'],
+                'description' => $this->sanitizeText($transaction['descricao']),
+                'category' => $this->sanitizeText($transaction['categoria']),
                 'amount' => $transaction['valor'],
                 'transaction_type' => $transaction['tipo_transacao'] === 'despesa' ? 'expense' : 'income',
                 'created_at' => now(),
@@ -47,5 +47,18 @@ class TransactionService
             Log::error("Erro ao converter data: {$dateValue}");
             return Carbon::now();
         }
+    }
+
+    private function sanitizeText(?string $text): string
+    {
+        if (empty($text)) {
+            return '';
+        }
+        
+        if (!mb_check_encoding($text, 'UTF-8')) {
+            $text = mb_convert_encoding($text, 'UTF-8', 'ISO-8859-1,Windows-1252,UTF-8');
+        }
+        
+        return preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $text);
     }
 }
