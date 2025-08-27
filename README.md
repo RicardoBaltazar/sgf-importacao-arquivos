@@ -9,27 +9,28 @@ Este é um projeto criado como estudo e hobby, utilizando Laravel, Filament e t�
 ## Funcionalidades Implementadas
 
 - **Autenticação Completa**: Login, registro e recuperação de senha
-- **Painel Administrativo**: Interface moderna com Filament
+- **Painel Administrativo**: Interface com Filament
 - **Importação de Arquivos Financeiros**: Suporte para arquivos CSV e Excel com dados financeiros
 - **Validação de Dados**: Verificação dos campos obrigatórios (data, descrição, categoria, valor, tipo)
 - **Processamento Assíncrono**: Processamento de arquivos em background usando filas
 - **Notificações por Email**: Envio automático de confirmação quando a importação é concluída
 - **Armazenamento Seguro**: Dados financeiros vinculados ao usuário autenticado
 - **Listagem de Transações**: Visualização paginada de todas as transações do usuário com busca e ordenação
-- **Remoção de Transações**: Exclusão individual ou em lote de transações com atualização automática dos relatórios
+- **Remoção de Transações**: Exclusão de transações com atualização automática dos relatórios
 - **Relatórios Financeiros**: Visualização de estatísticas financeiras por usuário com filtros por ano, mês, categoria e tipo
 - **Monitoramento de Filas**: Dashboard do Laravel Horizon para acompanhar processamento de tarefas
 - **Formatação Brasileira**: Valores monetários formatados em Real (R$ 1.000,00)
-- **Integração com IA**: Suporte ao Model Context Protocol (MCP) para análises e consultas inteligentes dos dados financeiros
+- **Integração com IA**: Suporte ao Model Context Protocol (MCP) para análises e consultas inteligentes dos dados financeiros com envio de relatórios por email
 
 ## Tecnologias Utilizadas
 
-- **Laravel 12**: Framework PHP moderno
+- **Laravel 12**: Framework PHP
 - **Laravel Sail**: Ambiente de desenvolvimento Docker
 - **Filament 3**: Framework de administração
 - **PostgreSQL**: Banco de dados relacional
 - **Redis**: Cache e filas
 - **Mailtrap**: Serviço para testes de email
+- **Laravel Horizon**: Monitoramento e gerenciamento de filas em tempo real
 
 ## Requisitos
 
@@ -133,6 +134,23 @@ O sistema está configurado para usar o Mailtrap para testes de email. Para conf
 
 ```bash
 ./vendor/bin/sail artisan test
+```
+
+## Exemplo de Logs de Importação
+
+Abaixo um exemplo simplificado dos logs gerados durante uma importação bem-sucedida de arquivo CSV/Excel:
+
+```log
+local.INFO: Iniciando processamento do arquivo para usuário 123: /app/storage/uploads/arquivo.csv
+local.INFO: Armazenando chunk de 1000 transações
+local.INFO: Chunk armazenado com sucesso
+local.INFO: Armazenando chunk de 500 transações
+local.INFO: Chunk armazenado com sucesso
+local.INFO: Processamento concluído: 1500 transações
+local.INFO: E-mail enviado para usuario@exemplo.com
+local.INFO: Iniciando processamento de estatísticas financeiras para usuário: 123
+local.INFO: Estatísticas atualizadas com sucesso: 180 registros
+local.INFO: Processamento de estatísticas concluído para usuário: 123
 ```
 
 ## Contribuição
