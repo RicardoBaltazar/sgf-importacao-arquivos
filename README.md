@@ -1,10 +1,10 @@
 # Sistema de Gerenciamento Financeiro com Importação de Arquivos
 
-Sistema MVP para gerenciamento de dados financeiros que permite a importação e processamento de arquivos CSV e Excel. O projeto visa desenvolver uma plataforma que suporte o processamento de grandes volumes de dados, com capacidade para arquivos de até 1 milhão de linhas.
+Sistema MVP para gerenciamento de dados financeiros que permite a importação e processamento de arquivos CSV e Excel. O projeto suporta o processamento de arquivos grandes, com capacidade testada para até 250 mil registros de transações no mesmo arquivo.
 
-O sistema foi projetado para processar dados de forma assíncrona, garantindo eficiência mesmo com arquivos grandes. Futuramente, serão implementadas funcionalidades para consultas aos dados importados, geração de relatórios e visualizações através de dashboards.
+O sistema processa dados de forma assíncrona, garantindo eficiência mesmo com arquivos grandes. Inclui funcionalidades para consultas aos dados importados, geração de relatórios e visualizações através de dashboards, além de integrações com IA via MCP (Model Context Protocol).
 
-Este é um projeto em desenvolvimento, criado como estudo e hobby, utilizando Laravel, Filament e técnicas de processamento assíncrono.
+Este é um projeto criado como estudo e hobby, utilizando Laravel, Filament e técnicas de processamento assíncrono.
 
 ## Funcionalidades Implementadas
 
@@ -20,6 +20,7 @@ Este é um projeto em desenvolvimento, criado como estudo e hobby, utilizando La
 - **Relatórios Financeiros**: Visualização de estatísticas financeiras por usuário com filtros por ano, mês, categoria e tipo
 - **Monitoramento de Filas**: Dashboard do Laravel Horizon para acompanhar processamento de tarefas
 - **Formatação Brasileira**: Valores monetários formatados em Real (R$ 1.000,00)
+- **Integração com IA**: Suporte ao Model Context Protocol (MCP) para análises e consultas inteligentes dos dados financeiros
 
 ## Tecnologias Utilizadas
 
@@ -99,13 +100,19 @@ docker run --rm \
 ```bash
 ./vendor/bin/sail artisan queue:work
 ```
-Nota: Mantenha um destes comandos rodando em um terminal separado. Eles são responsáveis por processar as importações de arquivos e gerar as estatísticas financeiras em background.
+**Importante**: Mantenha este comando rodando em um terminal separado. O Laravel Horizon é obrigatório para o funcionamento correto do sistema, pois gerencia tanto o processamento de importações quanto a atualização de estatísticas financeiras.
 
-Diferenças:
+**Por que usar o Horizon?**
 
-Horizon: Oferece dashboard visual, métricas em tempo real e melhor gerenciamento
+O sistema possui filas que executam em tempos específicos, como a atualização de estatísticas financeiras, que não ocorre necessariamente após cada lançamento. Existe uma regra de atualização inteligente para evitar processamentos duplicados e otimizar a performance.
 
-Queue:work: Opção mais simples, sem interface gráfica
+**O Horizon oferece**:
+
+- Monitoramento robusto e contínuo das filas
+- Dashboard visual para acompanhar o processamento
+- Gerenciamento automático de workers
+- Métricas em tempo real
+- Reinicialização automática em caso de falhas
 
 ## Acessando o Sistema
 
