@@ -9,42 +9,30 @@ use Tests\TestCase;
 class FileValidationServiceTest extends TestCase
 {
     protected $fileValidationService;
-    protected $tempFiles = [];
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->fileValidationService = new FileValidationService();
-
         Storage::fake('public');
-    }
-
-    protected function tearDown(): void
-    {
-        foreach ($this->tempFiles as $file) {
-            if (file_exists($file)) {
-                unlink($file);
-            }
-        }
-
-        parent::tearDown();
     }
 
     public function testValidateWithNonExistentFile(): void
     {
         $result = $this->fileValidationService->validate('arquivo_inexistente.csv');
 
+        $this->assertIsArray($result);
         $this->assertFalse($result['success']);
         $this->assertStringContainsString('Arquivo não encontrado', $result['message']);
     }
 
     public function testValidateWithUnsupportedFileFormat(): void
     {
-        $content = 'Conteúdo de teste';
-        Storage::disk('public')->put('test.txt', $content);
+        Storage::disk('public')->put('test.txt', 'Conteúdo de teste');
 
         $result = $this->fileValidationService->validate('test.txt');
 
+        $this->assertIsArray($result);
         $this->assertFalse($result['success']);
         $this->assertStringContainsString('Formato de arquivo não suportado', $result['message']);
     }
@@ -55,6 +43,7 @@ class FileValidationServiceTest extends TestCase
 
         $result = $this->fileValidationService->validate('empty.csv');
 
+        $this->assertIsArray($result);
         $this->assertFalse($result['success']);
         $this->assertStringContainsString('O arquivo está vazio', $result['message']);
     }
@@ -68,6 +57,7 @@ class FileValidationServiceTest extends TestCase
 
         $result = $this->fileValidationService->validate('valid.csv');
 
+        $this->assertIsArray($result);
         $this->assertTrue($result['success']);
         $this->assertStringContainsString('Arquivo válido', $result['message']);
     }
