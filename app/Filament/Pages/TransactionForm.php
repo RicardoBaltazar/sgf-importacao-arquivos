@@ -127,6 +127,7 @@ class TransactionForm extends Page implements HasForms, HasActions
                 ->title('Arquivo enviado com sucesso!')
                 ->body("Suas transações estão sendo processadas em segundo plano. O processamento pode levar alguns minutos, mas você receberá uma notificação quando a validação do arquivo for finalizada e o processamento das transações for executado.")
                 ->success()
+                ->duration(30000)
                 ->send();
         }
 
