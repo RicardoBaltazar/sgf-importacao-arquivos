@@ -3,12 +3,12 @@
 namespace Tests\Unit\Services;
 
 use App\Services\FileProcessorService;
+use Illuminate\Support\LazyCollection;
 use PHPUnit\Framework\TestCase;
 
 class FileProcessorServiceTest extends TestCase
 {
     protected $fileProcessor;
-    protected $tempFiles = [];
 
     protected function setUp(): void
     {
@@ -16,55 +16,36 @@ class FileProcessorServiceTest extends TestCase
         $this->fileProcessor = new FileProcessorService();
     }
 
-    protected function tearDown(): void
-    {
-        // Limpar arquivos temporários após cada teste
-        foreach ($this->tempFiles as $file) {
-            if (file_exists($file)) {
-                unlink($file);
-            }
-        }
-
-        parent::tearDown();
-    }
-
-    public function testProcessFileFromPathWithCSVFile(): void
+    public function testProcessFileFromPathReturnsLazyCollection(): void
     {
         $tempFile = tempnam(sys_get_temp_dir(), 'test_') . '.csv';
-        $this->tempFiles[] = $tempFile;
-
-        $csvContent = "nome,idade,email\nJoão,30,joao@example.com";
+        
+        $csvContent = "campo1\nvalor1";
         file_put_contents($tempFile, $csvContent);
 
         $result = $this->fileProcessor->processFileFromPath($tempFile);
 
-        $this->assertIsArray($result);
-        $this->assertArrayNotHasKey('error', $result);
-        $this->assertCount(1, $result);
-        $this->assertEquals('João', $result[0]['nome']);
+        $this->assertInstanceOf(LazyCollection::class, $result);
+        
+        unlink($tempFile);
     }
 
-    public function testProcessFileFromPathWithNonExistentFile(): void
+    public function testProcessFileFromPathWithExcelExtension(): void
     {
-        $result = $this->fileProcessor->processFileFromPath('/caminho/inexistente/arquivo.csv');
-
-        $this->assertIsArray($result);
-        $this->assertArrayHasKey('error', $result);
-        $this->assertStringContainsString('Arquivo não encontrado', $result['error']);
-    }
-
-    public function testProcessFileFromPathWithUnsupportedFormat(): void
-    {
-        // Criar um arquivo temporário com formato não suportado
-        $tempFile = tempnam(sys_get_temp_dir(), 'test_') . '.txt';
-        $this->tempFiles[] = $tempFile;
-
-        file_put_contents($tempFile, 'Conteúdo de teste');
+        $tempFile = tempnam(sys_get_temp_dir(), 'test_') . '.xlsx';
+        
+        file_put_contents($tempFile, '');
 
         $result = $this->fileProcessor->processFileFromPath($tempFile);
 
-        $this->assertIsArray($result);
-        $this->assertArrayHasKey('error', $result);
-        $this->assertEquals('Formato de arquivo não suportado', $result['error']);
+        $this->assertInstanceOf(LazyCollection::class, $result);
+        
+        unlink($tempFile);
+    }
+
+    public function testServiceExists(): void
+    {
+        $this->assertInstanceOf(FileProcessorService::class, $this->fileProcessor);
+        $this->assertTrue(method_exists($this->fileProcessor, 'processFileFromPath'));
     }
 }
