@@ -31,6 +31,7 @@ Este é um projeto criado como estudo e hobby, utilizando Laravel, Filament e t�
 - **Redis**: Cache e filas
 - **Mailtrap**: Serviço para testes de email
 - **Laravel Horizon**: Monitoramento e gerenciamento de filas em tempo real
+- **Laravel Telescope**: Monitoramento e debug da aplicação (desenvolvimento)
 
 ## Requisitos
 
